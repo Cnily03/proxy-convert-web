@@ -81,52 +81,83 @@ docker run -d \
 
 ## Routes
 
+> [!TIP]
+> Marked 🔹 for required, marked 🔸 for optional
+
 - `/convert?source=<source>&target=<target>&[...args]` \
-  Convert the proxy rules from the source to the target. \
-  🔹 `source`: The source proxy rules format. \
-  🔹 `target`: The target proxy rules format. \
-  🔹 `<...args>`: The arguments for the convert function. \
-  **Implementations:**
-  - ⏲︎ `source=clash` `target=singbox` \
-    🔸 `url`: URL
+  Convert the proxy rules from the source to the target.
+  - `source`: The source proxy rules format.
+  - `target`: The target proxy rules format.
+  - `[...args]`: The arguments for the convert function.
+
+  <p><details>
+    <summary><strong>Implementations</strong></summary><p>
+
+  **Example:** `/convert?source=clash&target=singbox&url=http://xxx`
+
+  | source | target | url | Description |
+  | ------ | ------ | --- | ---------------- |
+  | 🔹 `clash` | 🔹 `singbox` | 🔹 Subscription URL | Convert Clash rules to Singbox rules. |
+
+  </p></details></p>
+
 - `/apply?rule=<rule>&[...args]` \
-  Apply a rule to the proxy rules. \
-  🔹`rule`: The rule to apply. \
-  🔹`<...args>`: The arguments for the rule function. \
-  **Implementations:**
-  - ⏲︎ `rule=inject.clash.rules` \
-    🔸 `url`: URL \
-    🔸 `use`: (optional) list of predefined rules, selected from `default` \
-    🔸 `custom`: (optional) base64 encoded JSON array string of custom rules
-- `/sub/:identifier/:<path>` \
-  Custom subsciption route. \
-  🔹 `identifier`: The identifier of the subscription \
-  🔹 `path`: Remaining url path
+  Apply a rule to the proxy rules.
+  - `rule`: The rule to apply.
+  - `[...args]`: The arguments for the rule function.
 
-## Examples
+  <p><details>
+    <summary><strong>Implementations</strong></summary><p>
 
-### Campus Network Injection
+  **Example:** `/apply?rule=inject.clash.rules&url=http://xxx>&use=default&custom=WyJET01BSU4tU1VGRklYLGdvb2dsZS5jb20sRElSRUNUIl0%3D`
 
-#### Proxy Transformation
+  ```javascript
+  urlencode(base64('["DOMAIN-SUFFIX,google.com,DIRECT"]')) == 'WyJET01BSU4tU1VGRklYLGdvb2dsZS5jb20sRElSRUNUIl0%3D'
+  ```
 
-Here is an example of how to inject EasyConnect proxy rules into Clash proxy rules, in order to visit the campus network everywhere Internet is available.
+  | rule | url | use | custom | Description |
+  | ---- | --- | --- | ------ | ---------------- |
+  | 🔹 `inject.clash.rules` | 🔹 Subscription URL | 🔸 `default`, joined with `,` | 🔸 base64 encoded JSON array string of custom rules | Inject rules into Clash rules. |
 
-You need a public approchable linux server armed with docker.
+  </p></details></p>
 
-Download [this script](https://gist.github.com/Cnily03/cb286a2034b27630838a301b4f3bdcff) to `/usr/bin` (or any other directory in PATH), and make it executable by running `chmod +x /usr/bin/easyvpn`.
+- `/sub/:identifier/:path` \
+  Custom subsciption route.
+  - `identifier`: The identifier of the subscription
+  - `path`: Remaining url path
 
-Then you can convert EasyConnect into Socks5 or HTTP proxy. Try `easyvpn --help` for help.
+  <p><details>
+    <summary><strong>Implementations</strong></summary><p>
 
-Finally, expose corresponding ports on your server.
+  **Example:** `/sub/gatern/clash/xxx/xxx?mod=local`
 
-#### Customize Subscription Processor
+  </p></details></p>
+
+- `/sub?url=<URL>&[...args]` \
+  A special route of `/sub/:identifier/:path`. Apply mods to a subscription.
+  - `url`: Subscription URL
+
+  <p><details>
+    <summary><strong>Implementations</strong></summary><p>
+
+  **Example:** `/sub?url=http://xxx&type=clash&mod=local`
+
+  | url | mod | type | Description |
+  | --- | --- | ---- | ---------------- |
+  | 🔹 Subscription URL | 🔸 `local`, joined with `,` | 🔸 `clash` | Apply mods to a subscription. |
+
+  </p></details></p>
+
+## Development
+
+### Customize Subscription Processor
 
 Create or edit python files in the directory `pulib/sub/` to process your subscription.
 
 The processor function receives 3 arguments:
 
 - `path` (str) \
-  The path of the URL (same as in route `/sub/:identifier/:<path>`).
+  The path of the URL (same as in route `/sub/:identifier/:path`).
 - `search` (str) \
   The search part of the URL.
 - `params` (dict) \
@@ -145,6 +176,8 @@ Use decorator `@register_sub(identifier='...')` to register your processor funct
 
 > [!IMPORTANT]
 > Remember that `identifier` should be unique and cannot be started with `_`.
+> If `identifier` is `index`, the route becomes `/sub`, and `path` is empty string.
+> In case that the route is `/sub/:identifier` or `/sub/:identifier/`, `path` is delivered as empty string.
 
 #### Example
 
@@ -170,6 +203,63 @@ def main(path: str, search: str, params: dict):
 >       return error_json(500, "Internal Server Error"), 500
 > ```
 > There are other useful utilities in `pulib.utils` to help you program.
+
+## Campus Network Injection
+
+### Proxy Transformation
+
+Here is an example of how to inject EasyConnect proxy rules into Clash proxy rules, in order to visit the campus network everywhere Internet is available.
+
+You need a public approchable linux server armed with docker.
+
+Download [this script](https://gist.github.com/Cnily03/cb286a2034b27630838a301b4f3bdcff) to `/usr/bin` (or any other directory in PATH), and make it executable by running `chmod +x /usr/bin/easyvpn`.
+
+Then you can convert EasyConnect into Socks5 or HTTP proxy. Try `easyvpn --help` for help.
+
+Finally, expose corresponding ports on your server.
+
+### Modify your subscription rules
+
+Referring to [# Customize Subscription Processor](#customize-subscription-processor) or lookup `pulib/sub/index.py` to know how to handle custom rule injection. You can import `YAMLPiper` from `pulib.utils` to make the injection more easily.
+
+For example, if your subcription is for clash, modify `pulib/mod/clash.py`
+
+```python
+class ClashMod:
+    class proxy:
+        def school(yaml_obj):
+            inject_proxies = [{
+                "name": "EasyConnect",
+                "type": "socks5",
+                "server": "SERVER WHO TRANSFORMS EASYCONNECT",
+                "port": 10800,
+                "username": "YOUR SOCKS5 USERNAME",
+                "password": "YOUR SOCKS5 PASSWORD",
+                "network": "tcp",
+            }]
+            inject_proxy_groups = [{
+                "name": "SCHOOL",
+                "type": "select",
+                "proxies": ["EasyConnect"]
+            }]
+            inject_rules = [
+                "DOMAIN,any.school.edu.cn,SCHOOL"
+            ]
+            yaml_obj["proxies"] = unique_list(yaml_obj["proxies"] + inject_proxies)
+            yaml_obj["proxy-groups"] = unique_list(yaml_obj["proxy-groups"] + inject_proxy_groups)
+            yaml_obj["rules"] = unique_list(inject_rules + yaml_obj["rules"])
+```
+
+Then modify `pulib/sub/index.py` or your customized file. Apply `ClashMod.proxy.school` to mod.
+
+```python
+proxy_yaml.sequential(
+    apply_mod('campus', ClashMod.proxy.school),
+    ...
+)
+```
+
+Then in the route, deliver `mod=campus` in URL parameters to inject rules defined in `ClashMod.proxy.school`.
 
 ## License
 

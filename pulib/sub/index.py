@@ -1,16 +1,17 @@
-import os
 import requests
 import sys
 import yaml
-from pulib.utils import error_json, register_sub, YAMLPiper
+from pulib.utils import error_json, unique_list, register_sub, waf_url, YAMLPiper
 from pulib.mod.clash import ClashMod as mod
 
 
-@register_sub(identifier='gatern')
+@register_sub(identifier='index')
 def main(path: str, search: str, params: dict):
     # get content
-    sub_uri = "https://sub.gt-up.com/app/{0}{1}"
-    sub_uri = sub_uri.format(path, search)
+    sub_uri = waf_url(params.get('url', None))
+    if sub_uri is None:
+        return error_json(400, 'Invalid Parameter: url'), 400
+    sub_type = params.get('type', None)
     content = ""
     try:
         resp = requests.get(sub_uri)
@@ -23,7 +24,9 @@ def main(path: str, search: str, params: dict):
     except Exception as e:
         return error_json(500, 'Remote Server Error'), 500
 
-    # clash proxy
+    if sub_type is None:
+        return content, 'text/plain'
+
     enable_mods = params.get('mod', '').split(',')
     enable_mods = [x.strip() for x in enable_mods if x.strip()]
 
@@ -33,7 +36,7 @@ def main(path: str, search: str, params: dict):
         else:
             return None
 
-    if path.startswith('clash/'):
+    if sub_type == 'clash':
 
         # parse
         yaml_obj = yaml.safe_load(content)
@@ -49,4 +52,4 @@ def main(path: str, search: str, params: dict):
         return yaml.dump(yaml_obj, allow_unicode=True, width=-1), 'text/plain'
 
     else:
-        return content, 'text/plain'
+        return error_json(400, 'Unknown Parameter Value: type'), 400

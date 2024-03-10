@@ -10,7 +10,7 @@ def safe_url(url):
 
 def clash2singbox(params):
     # check params
-    url = waf_url(params['url'])
+    url = waf_url(params.get('url', None))
     if url == None:
         return error_json(400, 'Invalid URL')
     # prepare environment

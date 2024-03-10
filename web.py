@@ -185,6 +185,13 @@ def route_subscribe(identifier, fullpath):
         print("\033[31mError:\033[0m", e, file=sys.stderr)
         return error_json(500, 'Internal Server Error'), 500
 
+@app.route('/sub/<identifier>', methods=['GET'])
+def route_subscribe_no_path(identifier):
+    return route_subscribe(identifier, "")
+
+@app.route('/sub', methods=['GET'])
+def route_subscribe_no_identifier():
+    return route_subscribe("index", "")
 
 @app.route("/", methods=['GET'])
 def route_index():

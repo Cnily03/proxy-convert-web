@@ -66,3 +66,20 @@ def register_sub(identifier):
         SUB_FUNCS[identifier] = func
         return func
     return decorator
+
+class YAMLPiper:
+    def __init__(self, yaml_obj):
+        self.yaml_obj = yaml_obj
+
+    def pipe(self, func):
+        func(self.yaml_obj)
+        return self
+
+    def sequential(self, *funcs):
+        for func in funcs:
+            if callable(func):
+                self.pipe(func)
+        return self
+
+    def get(self):
+        return self.yaml_obj
